@@ -44,85 +44,89 @@ def init_block(check):
     newfile2 = open("initial_hash.txt", "w")                    #storing the first hash into a txt file to avoid unnesessary seaching
     newfile2.write(prev_hash)
 
-def checkin():                                                  #same as checkout
+def checkin(): #same as checkin()
     item_id = sys.argv[3]
-    binary_file = open("bhoc.bin", 'rb')
-    binary_file.read(68) #weird ass thing I did, bare with me
-
-    f = open('bhoc.bin', 'rb') #reading by 68 bytes, will need to change this when you guys implement remove()
-    
+    delim = 0
     block_list = []
-    delim = 68
+    data_list = []
+    f = open('bhoc.bin', 'rb')
     while delim is not os.path.getsize("bhoc.bin"):
-        f.seek(delim, 1)
+        #f.seek(delim, 1)
+        #print (delim)
         if delim == os.path.getsize("bhoc.bin"):
             break
-        
-        struct_arr = struct.unpack('20s d 16s I 11s I', binary_file.read(68))
-        
+        struct_arr = struct.unpack('20s d 16s I 11s I', f.read(68)) #read by 68 bytes, will need to change it when you pack in the data, just ask me if you need help
         INITIAL = namedtuple('INITIAL', ['prev_hash', 'timestamp', 'case_id', 'evidence_itemID', 'state', 'data_length'])
 
-        I = INITIAL._make(struct_arr) #to make it more readable, we make it into a named tuple
+        I = INITIAL._make(struct_arr)
+        block_list.append(I)
 
-        block_list.append(I) #now we have all of our blocks in a list
+        datastring = str(I.data_length) + 's'
+        
+        data = struct.unpack(datastring, f.read(I.data_length))
+        DATA = namedtuple('DATA', ['data'])
+        D = DATA._make(data)
+        data_list.append(D)
 
-
-        delim += 68
+        delim += 68 + I.data_length
     
     f.close()
     change = 0
     flag = 0
     for index, tuple in enumerate(block_list):
-        if int(item_id) == tuple.evidence_itemID and tuple.state.decode("utf-8").rstrip('\x00') == "CHECKEDIN": #to make sure its not already checked in
+        if int(item_id) == tuple.evidence_itemID and tuple.state.decode("utf-8").rstrip('\x00') == "CHECKEDOUT":
             #print("Hello")
             flag = 1
             change = index
-    if flag != 0:
-        print("Error: Cannot check in a checked in item. Must check it out first.")
+    if flag == 0:
+        print("Error: Cannot check out a checked out item. Must check it in first.")
         return
     EDIT_BLOCK = namedtuple('INITIAL', ['prev_hash', 'timestamp', 'case_id', 'evidence_itemID', 'state', 'data_length'])
     I = EDIT_BLOCK(block_list[change].prev_hash, block_list[change].timestamp, block_list[change].case_id, block_list[change].evidence_itemID, str.encode("CHECKEDIN"), 0)
-    block_list[change] = I #editing this one block
+    block_list[change] = I
     print("Case:", uuid.UUID(bytes=block_list[change].case_id))
     print("Checked out item:", item_id)
-    print("Status:", block_list[change].state)
+    print("Status:", block_list[change].state.decode("utf-8"))
 
     f = open("bhoc.bin", 'w')
     f.truncate
-    init_block(1)
-    file = open("bhoc.bin", "ab") #clearing and adding all the blocks back into the file
+    file = open("bhoc.bin", "ab")
+    index = 0
     for i in block_list:
-        print(i)
         block = struct.pack('20s d 16s I 11s I', *i)
+        datastring = (str(i.data_length) + 's')
+        data = struct.pack(datastring, *data_list[index])
         newFileByteArray = bytearray(block)
-        file.write(newFileByteArray)
-
+        newFileByteArray2 = bytearray(data)
+        file.write(newFileByteArray + newFileByteArray2)
+        index += 1
 
 
 def checkout(): #same as checkin()
     item_id = sys.argv[3]
-    binary_file = open("bhoc.bin", 'rb')
-    binary_file.read(68)
-
-    f = open('bhoc.bin', 'rb')
-    
+    delim = 0
     block_list = []
-    delim = 68
+    data_list = []
+    f = open('bhoc.bin', 'rb')
     while delim is not os.path.getsize("bhoc.bin"):
-        f.seek(delim, 1)
+        #f.seek(delim, 1)
+        #print (delim)
         if delim == os.path.getsize("bhoc.bin"):
             break
-        
-        struct_arr = struct.unpack('20s d 16s I 11s I', binary_file.read(68))
-        
+        struct_arr = struct.unpack('20s d 16s I 11s I', f.read(68)) #read by 68 bytes, will need to change it when you pack in the data, just ask me if you need help
         INITIAL = namedtuple('INITIAL', ['prev_hash', 'timestamp', 'case_id', 'evidence_itemID', 'state', 'data_length'])
 
         I = INITIAL._make(struct_arr)
-
         block_list.append(I)
 
+        datastring = str(I.data_length) + 's'
+        
+        data = struct.unpack(datastring, f.read(I.data_length))
+        DATA = namedtuple('DATA', ['data'])
+        D = DATA._make(data)
+        data_list.append(D)
 
-        delim += 68
+        delim += 68 + I.data_length
     
     f.close()
     change = 0
@@ -140,16 +144,20 @@ def checkout(): #same as checkin()
     block_list[change] = I
     print("Case:", uuid.UUID(bytes=block_list[change].case_id))
     print("Checked out item:", item_id)
-    print("Status:", block_list[change].state)
+    print("Status:", block_list[change].state.decode("utf-8"))
 
     f = open("bhoc.bin", 'w')
     f.truncate
     file = open("bhoc.bin", "ab")
-    init_block(1)
+    index = 0
     for i in block_list:
         block = struct.pack('20s d 16s I 11s I', *i)
+        datastring = (str(i.data_length) + 's')
+        data = struct.pack(datastring, *data_list[index])
         newFileByteArray = bytearray(block)
-        file.write(newFileByteArray)
+        newFileByteArray2 = bytearray(data)
+        file.write(newFileByteArray + newFileByteArray2)
+        index += 1
 
 
 
