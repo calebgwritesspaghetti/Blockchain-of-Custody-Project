@@ -258,6 +258,7 @@ def multiple_adds():
         if (flag == 1):
             itemlist.append(i)
     itemlist = [value for value in itemlist if value != '-i']
+    print(itemlist)
     for i in itemlist:
         f = open('bhoc.bin', 'rb')
     
@@ -288,8 +289,8 @@ def multiple_adds():
         datastring = str(block_list[-1].data_length) + 's'
         data = struct.pack(datastring, *data_list[-1])
         hash = SHA1_OF_A_B(header, data)
-        append_block(hash, now, sys.argv[3], sys.argv[5], "CHECKEDIN", 0)
-        print_add(uuid.UUID(sys.argv[3]), sys.argv[5], "CHECKEDIN", DT.datetime.utcfromtimestamp(now).isoformat() + "Z")
+        append_block(hash, now, sys.argv[3], i, "CHECKEDIN", 0)
+        print_add(uuid.UUID(sys.argv[3]), i, "CHECKEDIN", DT.datetime.utcfromtimestamp(now).isoformat() + "Z")
         f.close()
         
 def main():
