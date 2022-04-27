@@ -73,33 +73,34 @@ def checkin(): #same as checkin()
     f.close()
     change = 0
     flag = 0
+    id_list = []
+    index_list = []
     for index, tuple in enumerate(block_list):
-        if int(item_id) == tuple.evidence_itemID and tuple.state.decode("utf-8").rstrip('\x00') == "CHECKEDOUT":
+        if int(item_id) == tuple.evidence_itemID:
             #print("Hello")
-            flag = 1
-            change = index
+            #flag = 1
+            id_list.append(tuple)
+            index_list.append(index)
+    if id_list[last_index(id_list)].state.decode("utf-8").rstrip('\x00') == "CHECKEDOUT":
+        flag = 1
     if flag == 0:
-        print("Error: Cannot check out a checked out item. Must check it in first.")
+        print("Error: Cannot check in a checked in item. Must check it out first.")
         return
     EDIT_BLOCK = namedtuple('INITIAL', ['prev_hash', 'timestamp', 'case_id', 'evidence_itemID', 'state', 'data_length'])
-    I = EDIT_BLOCK(block_list[change].prev_hash, block_list[change].timestamp, block_list[change].case_id, block_list[change].evidence_itemID, str.encode("CHECKEDIN"), 0)
+    I = EDIT_BLOCK(id_list[-1].prev_hash, id_list[-1].timestamp, id_list[-1].case_id, id_list[-1].evidence_itemID, str.encode("CHECKEDIN"), 0)
     block_list[change] = I
-    print("Case:", uuid.UUID(bytes=block_list[change].case_id))
+    print("Case:", uuid.UUID(bytes=id_list[last_index(id_list)].case_id))
     print("Checked out item:", item_id)
-    print("Status:", block_list[change].state.decode("utf-8"))
+    print("Status:", I.state.decode("utf-8"))
 
-    f = open("bhoc.bin", 'w')
-    f.truncate
     file = open("bhoc.bin", "ab")
-    index = 0
-    for i in block_list:
-        block = struct.pack('20s d 16s I 11s I', *i)
-        datastring = (str(i.data_length) + 's')
-        data = struct.pack(datastring, *data_list[index])
-        newFileByteArray = bytearray(block)
-        newFileByteArray2 = bytearray(data)
-        file.write(newFileByteArray + newFileByteArray2)
-        index += 1
+    
+    block = struct.pack('20s d 16s I 11s I', *I)
+    datastring = (str(I.data_length) + 's')
+    data = struct.pack(datastring, *data_list[index_list[last_index(index_list)]])
+    newFileByteArray = bytearray(block)
+    newFileByteArray2 = bytearray(data)
+    file.write(newFileByteArray + newFileByteArray2)
 
 
 def checkout(): #same as checkin()
@@ -131,33 +132,34 @@ def checkout(): #same as checkin()
     f.close()
     change = 0
     flag = 0
+    id_list = []
+    index_list = []
     for index, tuple in enumerate(block_list):
-        if int(item_id) == tuple.evidence_itemID and tuple.state.decode("utf-8").rstrip('\x00') == "CHECKEDIN":
+        if int(item_id) == tuple.evidence_itemID:
             #print("Hello")
-            flag = 1
-            change = index
+            #flag = 1
+            id_list.append(tuple)
+            index_list.append(index)
+    if id_list[last_index(id_list)].state.decode("utf-8").rstrip('\x00') == "CHECKEDIN":
+        flag = 1
     if flag == 0:
         print("Error: Cannot check out a checked out item. Must check it in first.")
         return
     EDIT_BLOCK = namedtuple('INITIAL', ['prev_hash', 'timestamp', 'case_id', 'evidence_itemID', 'state', 'data_length'])
-    I = EDIT_BLOCK(block_list[change].prev_hash, block_list[change].timestamp, block_list[change].case_id, block_list[change].evidence_itemID, str.encode("CHECKEDOUT"), 0)
+    I = EDIT_BLOCK(id_list[-1].prev_hash, id_list[-1].timestamp, id_list[-1].case_id, id_list[-1].evidence_itemID, str.encode("CHECKEDOUT"), 0)
     block_list[change] = I
-    print("Case:", uuid.UUID(bytes=block_list[change].case_id))
+    print("Case:", uuid.UUID(bytes=id_list[last_index(id_list)].case_id))
     print("Checked out item:", item_id)
-    print("Status:", block_list[change].state.decode("utf-8"))
+    print("Status:", id_list[last_index(id_list)].state.decode("utf-8"))
 
-    f = open("bhoc.bin", 'w')
-    f.truncate
     file = open("bhoc.bin", "ab")
-    index = 0
-    for i in block_list:
-        block = struct.pack('20s d 16s I 11s I', *i)
-        datastring = (str(i.data_length) + 's')
-        data = struct.pack(datastring, *data_list[index])
-        newFileByteArray = bytearray(block)
-        newFileByteArray2 = bytearray(data)
-        file.write(newFileByteArray + newFileByteArray2)
-        index += 1
+    
+    block = struct.pack('20s d 16s I 11s I', *I)
+    datastring = (str(I.data_length) + 's')
+    data = struct.pack(datastring, *data_list[index_list[last_index(index_list)]])
+    newFileByteArray = bytearray(block)
+    newFileByteArray2 = bytearray(data)
+    file.write(newFileByteArray + newFileByteArray2)
 
 
 
@@ -224,9 +226,9 @@ def add():
         delim += 68 + I.data_length
     
     now = time.time()
-    header = struct.pack('20s d 16s I 11s I', *block_list[-1])
+    header = struct.pack('20s d 16s I 11s I', *block_list[last_index(block_list)])
     datastring = str(block_list[-1].data_length) + 's'
-    data = struct.pack(datastring, *data_list[-1])
+    data = struct.pack(datastring, *data_list[last_index(data_list)])
     hash = SHA1_OF_A_B(header, data)
     append_block(hash, now, sys.argv[3], sys.argv[5], "CHECKEDIN", 0)
     print_add(uuid.UUID(sys.argv[3]), sys.argv[5], "CHECKEDIN", DT.datetime.utcfromtimestamp(now).isoformat() + "Z")
@@ -258,7 +260,6 @@ def multiple_adds():
         if (flag == 1):
             itemlist.append(i)
     itemlist = [value for value in itemlist if value != '-i']
-    print(itemlist)
     for i in itemlist:
         f = open('bhoc.bin', 'rb')
     
@@ -287,7 +288,7 @@ def multiple_adds():
         now = time.time()
         header = struct.pack('20s d 16s I 11s I', *block_list[-1])
         datastring = str(block_list[-1].data_length) + 's'
-        data = struct.pack(datastring, *data_list[-1])
+        data = struct.pack(datastring, *data_list[last_index(data_list)])
         hash = SHA1_OF_A_B(header, data)
         append_block(hash, now, sys.argv[3], i, "CHECKEDIN", 0)
         print_add(uuid.UUID(sys.argv[3]), i, "CHECKEDIN", DT.datetime.utcfromtimestamp(now).isoformat() + "Z")
@@ -306,8 +307,12 @@ def main():
         checkout()
     elif (command == "checkin"):
         checkin()
+    elif (command == "remove"):
+        print("hello")
+        #remove()
 
-
+def last_index(input_list:list) -> int:
+    return len(input_list) - 1
 
 if __name__ == "__main__":
     main()
